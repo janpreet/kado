@@ -1,5 +1,3 @@
-Here is the detailed documentation for the codebase based on the provided structure:
-
 ## Project Structure
 
 ```plaintext

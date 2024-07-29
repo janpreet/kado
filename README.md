@@ -3,7 +3,7 @@
 
 ## Introduction
 
-Kado is a powerful and flexible tool designed to streamline the management of infrastructure configurations through a modular and declarative approach. Whether you're managing virtual machines, Kubernetes clusters, or other infrastructure components, Kado provides a cohesive framework to integrate and automate your Infrastructure as Code (IaC) processes using Terraform, Ansible, and Open Policy Agent (OPA).
+Kado is a powerful and flexible tool designed to streamline the management of infrastructure configurations using beads through a modular and declarative approach. Whether you're managing virtual machines, Kubernetes clusters, or other infrastructure components, Kado provides a cohesive framework to integrate and automate your Infrastructure as Code (IaC) processes using Terraform, Ansible, and Open Policy Agent (OPA).
 
 ## Problems Kado Solves
 
