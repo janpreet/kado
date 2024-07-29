@@ -1,3 +1,4 @@
+[![Build, Docker, and Release](https://github.com/janpreet/kado/actions/workflows/docker-release.yaml/badge.svg)](https://github.com/janpreet/kado/actions/workflows/docker-release.yaml)
 <img src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" data-canonical-src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" width="300" height="250" />
 
 ## Introduction
