@@ -119,3 +119,4 @@ Kado simplifies the deployment process by automating the execution of configured
 Kado aims to simplify and streamline the management of your infrastructure as code. By providing a modular, consistent, and automated framework, Kado helps you reduce complexity, minimize errors, and achieve efficient infrastructure management. Whether you are provisioning resources with Terraform, managing configurations with Ansible, or enforcing policies with OPA, Kado brings everything together into a cohesive and powerful tool.
 
 Dive into the Kado project and experience a new level of simplicity and efficiency in managing your infrastructure!
+[Configuration](https://github.com/janpreet/kado/blob/main/Configuration.md), [How to](https://github.com/janpreet/kado/blob/main/How-to.md), [Structure](https://github.com/janpreet/kado/blob/main/Structure.md)
