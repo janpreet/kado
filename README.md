@@ -1,5 +1,5 @@
 [![Build, Docker, and Release](https://github.com/janpreet/kado/actions/workflows/docker-release.yaml/badge.svg)](https://github.com/janpreet/kado/actions/workflows/docker-release.yaml)[![Sensitive Data Check](https://github.com/janpreet/kado/actions/workflows/sensitive-data-check.yml/badge.svg)](https://github.com/janpreet/kado/actions/workflows/sensitive-data-check.yml)
-<img src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" data-canonical-src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" width="300" height="250" />
+<p align="center"><img src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" data-canonical-src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" width="300" height="250" /></p>
 
 ## Introduction
 
