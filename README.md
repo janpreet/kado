@@ -1,6 +1,4 @@
-# Kado
-
-![Kado](https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png)
+<img src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" data-canonical-src="https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png" width="300" height="250" />
 
 ## Introduction
 
