@@ -45,7 +45,7 @@ jobs:
     - name: Push Docker image to GitHub Packages
       run: |
         docker push ${{ env.DOCKER_IMAGE }}:latest
-        docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
+        #docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
 
     - name: Create GitHub release
       uses: softprops/action-gh-release@v1
