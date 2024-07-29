@@ -1,4 +1,6 @@
-# Kado# Kado Project Overview
+# Kado
+
+![Kado](https://raw.githubusercontent.com/janpreet/kado/main/assets/kado.png)
 
 ## Introduction
 
