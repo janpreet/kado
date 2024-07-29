@@ -20,19 +20,9 @@ jobs:
 
       - name: Build KD Linter
         run: |
-          go build -o kdlinter kdlinter.go
+          go mod init kdlinter
+          go build -o kdlinter .
 
       - name: Run KD Linter
         run: |
           ./kdlinter .
-        continue-on-error: true
-
-      - name: Check Linter Output
-        run: |
-          if [ -s lint_output.txt ]; then
-            echo "Linter found issues:"
-            cat lint_output.txt
-            exit 1
-          else
-            echo "No linting issues found."
-          fi
