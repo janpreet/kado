@@ -1,0 +1,8 @@
+<backend.tfvars>
+terraform {
+  backend "s3" {
+    bucket = "{{.Get "aws.s3.bucket"}}"
+    key    = "{{.Get "aws.s3.key"}}"
+    region = "{{.Get "aws.s3.region"}}"
+  }
+}

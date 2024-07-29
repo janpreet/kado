@@ -1,0 +1,57 @@
+name: Build, Docker, and Release
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/*'
+      - 'fix/*'
+
+env:
+  VERSION_FILE: VERSION
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: '1.22.x'
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Log in to GitHub Container Registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+    - name: Bump version
+      run: make version-bump
+
+    - name: Read version
+      id: version
+      run: echo "::set-output name=version::$(cat $(VERSION_FILE))"
+
+    - name: Build Docker image
+      run: make docker-build
+
+    - name: Push Docker image to GitHub Packages
+      run: |
+        docker push ${{ env.DOCKER_IMAGE }}:latest
+        docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
+
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release ${{ steps.version.outputs.version }}
+        files: kado
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

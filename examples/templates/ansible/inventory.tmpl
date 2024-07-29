@@ -1,0 +1,9 @@
+<inventory.ini>
+[proxmox]
+{{join "proxmox.nodes.saathi01" "\n"}}
+{{join "proxmox.nodes.saathi02" "\n"}}
+
+[all:vars]
+cluster_name={{.Get "proxmox.cluster_name"}}
+ansible_user={{.Get "ansible.user"}}
+ansible_python_interpreter={{.Get "ansible.python_interpreter"}}

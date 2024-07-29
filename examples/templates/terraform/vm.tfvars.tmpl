@@ -1,0 +1,28 @@
+<vm.tfvars>
+aws_region       = "{{.Get "aws.s3.region"}}"
+pm_api_url       = "{{.Get "proxmox.api_url"}}"
+pm_user          = "{{.Env "PM_USER"}}"
+pm_password      = "{{.Env "PM_PASSWORD"}}"
+vm_roles = {
+  master       = {{.Get "proxmox.vm.roles.master"}}
+  worker       = {{.Get "proxmox.vm.roles.worker"}}
+  loadbalancer = {{.Get "proxmox.vm.roles.loadbalancer"}}
+}
+vm_template      = {{.Get "proxmox.vm.template"}}
+vm_cpu           = {{.Get "proxmox.vm.cpu"}}
+vm_memory        = {{.Get "proxmox.vm.memory"}}
+vm_disk_size = "{{.Get "proxmox.vm.disk_size"}}"
+vm_storage       = "{{.Get "proxmox.vm.storage"}}"
+vm_network_bridge = "{{.Get "proxmox.vm.network_bridge"}}"
+vm_network_model = "{{.Get "proxmox.vm.network_model"}}"
+proxmox_nodes = {{ .GetKeysAsArray "proxmox.nodes" }}
+ssh_public_key_content   = "/Users/janpreetsingh/.ssh/id_rsa.pub"
+ssh_private_key          = "/Users/janpreetsingh/.ssh/id_rsa"
+ssh_user  = "{{.Get "proxmox.vm.ssh_user"}}"
+cloud_init_user_data_file = "templates/cloud_init_user_data.yaml"
+k8s_master_setup_script  = "scripts/k8s_master_setup.sh"
+k8s_worker_setup_script  = "scripts/k8s_worker_setup.sh"
+haproxy_setup_script     = "scripts/haproxy_setup.sh"
+haproxy_config_file      = "templates/haproxy.cfg"
+s3_bucket                = "{{.Get "aws.s3.bucket"}}"
+s3_key                   = "{{.Get "aws.s3.key"}}"

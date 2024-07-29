@@ -1,0 +1,38 @@
+name: KD Linter
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  lint:
+    name: Lint KD Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build KD Linter
+        run: |
+          go build -o kdlinter kdlinter.go
+
+      - name: Run KD Linter
+        run: |
+          ./kdlinter .
+        continue-on-error: true
+
+      - name: Check Linter Output
+        run: |
+          if [ -s lint_output.txt ]; then
+            echo "Linter found issues:"
+            cat lint_output.txt
+            exit 1
+          else
+            echo "No linting issues found."
+          fi

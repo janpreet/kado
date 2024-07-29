@@ -1,0 +1,29 @@
+name: Sensitive Data Check
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Check Gitleaks output
+        if: ${{ failure() }}
+        run: |
+          echo "Gitleaks has detected potential sensitive data in your PR."
+          echo "Please review the Gitleaks output and remove any sensitive information before merging."
+          exit 1

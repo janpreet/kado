@@ -1,0 +1,36 @@
+---
+ansible:
+  user: "user"
+  python_interpreter: "/usr/bin/python3"
+
+proxmox:
+  cluster_name: "pmc"
+  api_url: "https://1.2.3.4:8006/api2/json"
+  user: "user"
+  password: "password"
+  nodes:
+    saathi01:
+      - 1.2.3.4
+    saathi02:
+      - 1.2.3.5
+  vm:
+    roles:
+      master: 2
+      worker: 3
+      loadbalancer: 1
+    template: 100
+    cpu: 2
+    memory: 2048
+    storage: "local-lvm"
+    disk_size: "10G"
+    network_bridge: "vmbr0"
+    network_model: "virtio"
+    ssh_public_key_content: ""
+    ssh_private_key: ""
+    ssh_user: "ubuntu"
+
+aws:
+  s3:
+    region: "aws-region"
+    bucket: "s3-bucket"
+    key: "tf-key"
