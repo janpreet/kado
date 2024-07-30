@@ -15,7 +15,7 @@ import (
 	"github.com/janpreet/kado/packages/opa"
 	"github.com/janpreet/kado/packages/render"
 	"github.com/janpreet/kado/packages/terraform"
-	"github.com/janpreet/kado/packages/terragrunt" // Import the new package
+	"github.com/janpreet/kado/packages/terragrunt"
 )
 
 func convertYAMLToSlice(yamlData map[string]interface{}) []map[string]interface{} {

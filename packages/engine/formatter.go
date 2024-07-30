@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// FormatKDFile formats a single .kd file with proper indentation and without extra newlines at the end.
+
 func FormatKDFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -45,7 +45,7 @@ func FormatKDFile(filePath string) error {
 			buffer.WriteString("  " + trimmedLine + "\n")
 		} else {
 			if commentRegex.MatchString(trimmedLine) {
-				// Remove extra spaces in comments
+				
 				trimmedLine = strings.TrimSpace(trimmedLine)
 				trimmedLine = strings.Replace(trimmedLine, "#", "#", 1)
 			}
@@ -64,7 +64,7 @@ func FormatKDFile(filePath string) error {
 		formattedLines = append(formattedLines, buffer.String())
 	}
 
-	// Remove the last newline if it exists
+	
 	if len(formattedLines) > 0 && formattedLines[len(formattedLines)-1] == "\n" {
 		formattedLines = formattedLines[:len(formattedLines)-1]
 	}
@@ -79,7 +79,7 @@ func FormatKDFile(filePath string) error {
 	return nil
 }
 
-// FormatKDFilesInDir formats all .kd files in a given directory with proper indentation and without extra newlines at the end.
+
 func FormatKDFilesInDir(dir string) error {
 	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
