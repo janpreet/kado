@@ -223,7 +223,8 @@ Kado aims to simplify and streamline the management of your infrastructure as co
 ## Upcoming Improvements
 
 - More tests and better test coverage.
-- Support for CDK and Pulumi.
+- Support for CDK and Pulumi, among other IaC tools.
+- Add code for destroy infrastructure.
 - Add iterative capabilities for config,yaml.
 - Improved error handling and logging.
 - More customizable and dynamic templating functions.
