@@ -39,6 +39,10 @@ jobs:
       id: version
       run: echo "::set-output name=version::$(cat $(VERSION_FILE))"
 
+    - name: Run tests
+      run: |
+        go test ./...
+
     - name: Build Docker image
       run: make docker-build
 

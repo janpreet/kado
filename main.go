@@ -15,6 +15,7 @@ import (
 	"github.com/janpreet/kado/packages/opa"
 	"github.com/janpreet/kado/packages/render"
 	"github.com/janpreet/kado/packages/terraform"
+	"github.com/janpreet/kado/packages/terragrunt" // Import the new package
 )
 
 func convertYAMLToSlice(yamlData map[string]interface{}) []map[string]interface{} {
@@ -69,7 +70,13 @@ func processBead(b bead.Bead, yamlData map[string]interface{}, beadMap map[strin
 
 	if b.Name == "ansible" {
 		fmt.Println("Processing Ansible templates...")
-		err := render.ProcessTemplates("templates/ansible", yamlData)
+
+		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
+		if !ok {
+			return fmt.Errorf("no templates defined for Ansible in the YAML configuration")
+		}
+
+		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
 		if err != nil {
 			return fmt.Errorf("failed to process Ansible templates: %v", err)
 		}
@@ -105,7 +112,13 @@ func processBead(b bead.Bead, yamlData map[string]interface{}, beadMap map[strin
 
 	if b.Name == "terraform" {
 		fmt.Println("Processing Terraform templates...")
-		err := render.ProcessTemplates("templates/terraform", yamlData)
+
+		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
+		if !ok {
+			return fmt.Errorf("no templates defined for Terraform in the YAML configuration")
+		}
+
+		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
 		if err != nil {
 			return fmt.Errorf("failed to process Terraform templates: %v", err)
 		}
@@ -122,6 +135,26 @@ func processBead(b bead.Bead, yamlData map[string]interface{}, beadMap map[strin
 		err := opa.HandleOPA(b, config.LandingZone, applyPlan, originBead)
 		if err != nil {
 			return fmt.Errorf("failed to process OPA: %v", err)
+		}
+	}
+
+	if b.Name == "terragrun" {
+		fmt.Println("Processing Terragrunt templates...")
+
+		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
+		if !ok {
+			return fmt.Errorf("no templates defined for Terragrunt in the YAML configuration")
+		}
+
+		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
+		if err != nil {
+			return fmt.Errorf("failed to process Terragrunt templates: %v", err)
+		}
+
+		fmt.Println("Running Terragrunt plan...")
+		err = terragrunt.HandleTerragrunt(b, config.LandingZone, applyPlan)
+		if err != nil {
+			return fmt.Errorf("failed to run Terragrunt: %v", err)
 		}
 	}
 
@@ -142,7 +175,23 @@ func processBead(b bead.Bead, yamlData map[string]interface{}, beadMap map[strin
 	return nil
 }
 
+func convertTemplatePaths(paths []interface{}) []string {
+	var result []string
+	for _, path := range paths {
+		if strPath, ok := path.(string); ok {
+			result = append(result, strPath)
+		}
+	}
+	return result
+}
+
 func main() {
+	var yamlFilePath string
+	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".yaml") {
+		yamlFilePath = os.Args[1]
+	} else {
+		yamlFilePath = "cluster.yaml"
+	}
 
 	if len(os.Args) > 1 && os.Args[1] == "version" {
 		fmt.Println("Version:", config.Version)
@@ -203,7 +252,7 @@ func main() {
 		beads = append(beads, bs...)
 	}
 
-	yamlData, err := config.LoadYAMLConfig("cluster.yaml")
+	yamlData, err := config.LoadYAMLConfig(yamlFilePath)
 	if err != nil {
 		log.Fatalf("Failed to load YAML config: %v", err)
 	}

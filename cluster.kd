@@ -1,0 +1,17 @@
+# Comment
+bead "ansible" {
+  enabled = false
+  source = "git@github.com:janpreet/proxmox_ansible.git"
+  playbook = "cluster.yaml"
+  extra_vars_file = false
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_ansible.git,path=ansible/policies/proxmox.rego,input=ansible/cluster.yaml,package=data.proxmox.main.allowed"
+  #  extra_vars = "a=b"
+}
+
+bead "terraform" {
+  source = "git@github.com:janpreet/proxmox_terraform.git"
+  enabled = false
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_terraform.git,path=terraform/policies/proxmox.rego,input=terraform/plan.json,package=data.terraform.allow"
+}

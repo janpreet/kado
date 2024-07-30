@@ -137,20 +137,10 @@ func ProcessTemplate(templatePath string, data map[string]interface{}) (string, 
 	return outputPath, nil
 }
 
-func ProcessTemplates(templateDir string, data map[string]interface{}) error {
-	files, err := os.ReadDir(templateDir)
-	if err != nil {
-		return fmt.Errorf("failed to read template directory: %v", err)
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		filePath := filepath.Join(templateDir, file.Name())
-		_, err := ProcessTemplate(filePath, data)
-		if err != nil {
-			return fmt.Errorf("failed to process template %s: %v", file.Name(), err)
+func ProcessTemplates(templatePaths []string, data map[string]interface{}) error {
+	for _, templatePath := range templatePaths {
+		if _, err := ProcessTemplate(templatePath, data); err != nil {
+			return fmt.Errorf("failed to process template %s: %v", templatePath, err)
 		}
 	}
 	return nil

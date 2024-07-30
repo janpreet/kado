@@ -12,6 +12,7 @@ import (
 type YAMLConfig map[string]interface{}
 
 var LandingZone = "LandingZone"
+var TemplateDir = "templates"
 
 const Version = "1.0.0"
 

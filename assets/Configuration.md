@@ -241,3 +241,128 @@ for _, b := range validBeads {
   }
 }
 ```
+### Cluster Configuration and Template Integration in Kado
+
+Kado leverages a single source of truth file, typically named `cluster.yaml` or something relevant for ease of human readability, to drive the automation of Infrastructure as Code (IaC) using various beads. This configuration file is used to define all the necessary parameters and settings required for provisioning and managing infrastructure. Kado reads these configurations and uses them to populate templates that are then processed by different tools like Ansible, Terraform, and Terragrunt.
+
+## Structure of example `cluster.yaml`
+
+The `cluster.yaml` file follows a hierarchical structure, where different sections define specific configurations for various aspects of the infrastructure. Here's an example structure:
+
+```yaml
+kado:
+  templates:
+    - templates/ansible/inventory.tmpl
+    - templates/terraform/backend.tfvars.tmpl
+    - templates/terraform/vm.tfvars.tmpl
+
+ansible:
+  user: "user"
+  python_interpreter: "/usr/bin/python3"
+
+proxmox:
+  cluster_name: "pmc"
+  api_url: "https://1.2.3.4:8006/api2/json"
+  user: "user"
+  password: "password"
+  nodes:
+    saathi01:
+      - 1.2.3.4
+    saathi02:
+      - 1.2.3.5
+  vm:
+    roles:
+      master: 2
+      worker: 3
+      loadbalancer: 1
+    template: 100
+    cpu: 2
+    memory: 2048
+    storage: "local-lvm"
+    disk_size: "10G"
+    network_bridge: "vmbr0"
+    network_model: "virtio"
+    ssh_public_key_content: ""
+    ssh_private_key: ""
+    ssh_user: "ubuntu"
+
+aws:
+  s3:
+    region: "aws-region"
+    bucket: "s3-bucket"
+    key: "tf-key"
+```
+
+### Key Sections
+
+- **kado**: Defines the templates to be used for generating configuration files. Each template path is relative to the root of the project. This is the only section of yaml that needs to stay as is. Everything else is replacable key-value pairs.
+
+## Using Templates in Kado
+
+Kado processes the templates specified in the `kado.templates` section of `cluster.yaml` to generate the necessary configuration files. These templates use Go template syntax to dynamically populate values based on the `cluster.yaml` configurations.
+
+### Example Templates
+
+#### Ansible Inventory Template
+
+**Path**: `templates/ansible/inventory.tmpl`
+
+```hcl
+<inventory.ini>
+[proxmox]
+{{join "proxmox.nodes.saathi01" "\n"}}
+{{join "proxmox.nodes.saathi02" "\n"}}
+
+[all:vars]
+cluster_name={{.Get "proxmox.cluster_name"}}
+ansible_user={{.Get "ansible.user"}}
+ansible_python_interpreter={{.Get "ansible.python_interpreter"}}
+```
+
+#### Terraform Variables Template
+
+**Path**: `templates/terraform/vm.tfvars.tmpl`
+
+```hcl
+<vm.tfvars>
+aws_region       = "{{.Get "aws.s3.region"}}"
+pm_api_url       = "{{.Get "proxmox.api_url"}}"
+pm_user          = "{{.Env "PM_USER"}}"
+pm_password      = "{{.Env "PM_PASSWORD"}}"
+vm_roles = {
+  master       = {{.Get "proxmox.vm.roles.master"}}
+  worker       = {{.Get "proxmox.vm.roles.worker"}}
+  loadbalancer = {{.Get "proxmox.vm.roles.loadbalancer"}}
+}
+vm_template      = {{.Get "proxmox.vm.template"}}
+vm_cpu           = {{.Get "proxmox.vm.cpu"}}
+vm_memory        = {{.Get "proxmox.vm.memory"}}
+vm_disk_size = "{{.Get "proxmox.vm.disk_size"}}"
+vm_storage       = "{{.Get "proxmox.vm.storage"}}"
+vm_network_bridge = "{{.Get "proxmox.vm.network_bridge"}}"
+vm_network_model = "{{.Get "proxmox.vm.network_model"}}"
+proxmox_nodes = {{ .GetKeysAsArray "proxmox.nodes" }}
+ssh_public_key_content   = "/path/to/id_rsa.pub"
+ssh_private_key          = "/path/to/id_rsa"
+ssh_user  = "{{.Get "proxmox.vm.ssh_user"}}"
+cloud_init_user_data_file = "templates/cloud_init_user_data.yaml"
+k8s_master_setup_script  = "scripts/k8s_master_setup.sh"
+k8s_worker_setup_script  = "scripts/k8s_worker_setup.sh"
+haproxy_setup_script     = "scripts/haproxy_setup.sh"
+haproxy_config_file      = "templates/haproxy.cfg"
+s3_bucket                = "{{.Get "aws.s3.bucket"}}"
+s3_key                   = "{{.Get "aws.s3.key"}}"
+```
+
+## Driving Bead Automation with `cluster.yaml`
+
+The `cluster.yaml` file serves as the single source of truth for all configurations, driving the automation process within Kado. Each bead in Kado processes its respective templates and configuration settings as defined in `cluster.yaml`.
+
+### Processing Flow
+
+1. **Read `cluster.yaml`**: Kado reads the `cluster.yaml` file to gather all configurations.
+2. **Load Templates**: The templates defined in the `kado.templates` section are loaded.
+3. **Process Beads**: Each bead processes its templates and executes the necessary commands. The templates are populated with values from `cluster.yaml`.
+4. **Relay to OPA**: If a bead is configured to relay to OPA, the generated plan (e.g., Terraform or Terragrunt plan) is evaluated by OPA before proceeding with the apply step.
+
+By defining configurations in `cluster.yaml` and using Kado's templating system, users can achieve a seamless and automated workflow for managing their infrastructure.
