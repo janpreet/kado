@@ -4,6 +4,7 @@ var ValidBeadNames = map[string]bool{
 	"ansible":   true,
 	"terraform": true,
 	"opa":       true,
+	"terragrunt":true,
 }
 
 func GetValidBeads() map[string]struct{} {
@@ -11,5 +12,6 @@ func GetValidBeads() map[string]struct{} {
 		"ansible":   {},
 		"terraform": {},
 		"opa":       {},
+		"terragrunt":{},
 	}
 }

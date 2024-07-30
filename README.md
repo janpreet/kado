@@ -3,120 +3,229 @@
 
 ## Introduction
 
-Kado is a powerful and flexible tool designed to streamline the management of infrastructure configurations using beads through a modular and declarative approach. Whether you're managing virtual machines, Kubernetes clusters, or other infrastructure components, Kado provides a cohesive framework to integrate and automate your Infrastructure as Code (IaC) processes using Terraform, Ansible, and Open Policy Agent (OPA).
+Kado is a modular configuration management tool designed to streamline and automate the provisioning and configuration of infrastructure using tools like Ansible, Terraform, and Terragrunt. It provides a flexible framework for defining and processing configurations through a concept called "beads," which are modular units of configuration.
 
-## Problems Kado Solves
+## Table of Contents
 
-### 1. **Consistency in Infrastructure Configurations**
+- [Overview](#overview)
+- [Configuration Files](#configuration-files)
+  - [cluster.yaml](#clusteryaml)
+  - [Template Files](#template-files)
+- [Beads](#beads)
+  - [Ansible Bead](#ansible-bead)
+  - [Terraform Bead](#terraform-bead)
+  - [OPA Bead](#opa-bead)
+  - [Terragrunt Bead](#terragrunt-bead)
+- [Usage](#usage)
+  - [Commands](#commands)
+  - [Getting Started](#getting-started)
+  - [Configuration](#configuration)
+- [Upcoming Improvements](#upcoming-improvements)
+- [Code of Conduct](#code-of-conduct)
 
-Maintaining consistency in infrastructure configurations across different environments can be challenging. Inconsistent configurations can lead to unexpected behaviors, security vulnerabilities, and operational inefficiencies.
+## Overview
 
-**How Kado Solves It:**
-- Kado uses a single source of truth for infrastructure configurations, defined in `*.kd` files and templates. This ensures that configurations are consistent and repeatable across all environments.
+Kado is a Bring Your Own Code (BYOC) tool that leverages your existing Ansible, Terraform, and Terragrunt configurations, and provides a single source of truth for your infrastructure parameters. It uses `*.kd` files for defining beads and `*.yaml` for centralized configuration, making it easy to manage and relay configurations across different infrastructure components.
 
-### 2. **Modular and Scalable Configuration Management**
+## Configuration Files
 
-As infrastructure grows in complexity, managing configurations becomes increasingly difficult. Large monolithic configuration files are hard to maintain and scale.
+### cluster.yaml
 
-**How Kado Solves It:**
-- Kado introduces a modular approach with "beads," which are blocks of configurations that define specific aspects of your infrastructure. This modularity allows you to manage, update, and scale your configurations easily.
+The `cluster.yaml` file serves as the single source of truth for your infrastructure configuration. It contains various parameters that are used to drive the automation of infrastructure provisioning and configuration.
 
-### 3. **Automation and Integration of IaC Tools**
+Example `cluster.yaml`:
 
-Integrating and automating different IaC tools like Terraform and Ansible can be cumbersome. Each tool has its own syntax, workflows, and integration points, which can complicate automation.
+```yaml
+kado:
+  templates:
+    - templates/ansible/inventory.tmpl
+    - templates/terraform/backend.tfvars.tmpl
+    - templates/terraform/vm.tfvars.tmpl
 
-**How Kado Solves It:**
-- Kado seamlessly integrates Terraform and Ansible by using templates and a unified configuration structure. It automates the execution of these tools, ensuring smooth and efficient workflows.
+ansible:
+  user: "user"
+  python_interpreter: "/usr/bin/python3"
 
-### 4. **Policy Enforcement and Compliance**
+proxmox:
+  cluster_name: "pmc"
+  api_url: "https://1.2.3.4:8006/api2/json"
+  user: "user"
+  password: "password"
+  nodes:
+    saathi01:
+      - 1.2.3.4
+    saathi02:
+      - 1.2.3.5
+  vm:
+    roles:
+      master: 2
+      worker: 3
+      loadbalancer: 1
+    template: 100
+    cpu: 2
+    memory: 2048
+    storage: "local-lvm"
+    disk_size: "10G"
+    network_bridge: "vmbr0"
+    network_model: "virtio"
+    ssh_public_key_content: ""
+    ssh_private_key: ""
+    ssh_user: "ubuntu"
 
-Ensuring that your infrastructure complies with security policies and operational guidelines is critical. However, manually enforcing these policies can be error-prone and time-consuming.
+aws:
+  s3:
+    region: "aws-region"
+    bucket: "s3-bucket"
+    key: "tf-key"
+```
 
-**How Kado Solves It:**
-- Kado incorporates Open Policy Agent (OPA) to enforce policies and compliance checks. By relaying configurations to OPA, Kado ensures that only approved policies are applied, enhancing security and compliance.
+### Template Files
 
-### 5. **Simplified Configuration Management**
+Template files are used to generate configuration files for various tools like Ansible and Terraform. These templates are stored in the `templates/` directory and can be customized as needed to meet the specific needs of your infrastructure, providing flexibility and control over the configuration process.
 
-Managing infrastructure configurations often requires deep knowledge of various tools and their configurations. This complexity can slow down development and operations teams.
+Example `vm.tfvars.tmpl`:
 
-**How Kado Solves It:**
-- Kado abstracts the complexities of individual IaC tools and provides a simplified, unified interface for managing configurations. This reduces the learning curve and enables teams to focus on their core tasks.
+```hcl
+<vm.tfvars>
+aws_region       = "{{.Get "aws.s3.region"}}"
+pm_api_url       = "{{.Get "proxmox.api_url"}}"
+pm_user          = "{{.Env "PM_USER"}}"
+pm_password      = "{{.Env "PM_PASSWORD"}}"
+vm_roles = {
+  master       = {{.Get "proxmox.vm.roles.master"}}
+  worker       = {{.Get "proxmox.vm.roles.worker"}}
+  loadbalancer = {{.Get "proxmox.vm.roles.loadbalancer"}}
+}
+vm_template      = {{.Get "proxmox.vm.template"}}
+vm_cpu           = {{.Get "proxmox.vm.cpu"}}
+vm_memory        = {{.Get "proxmox.vm.memory"}}
+vm_disk_size = "{{.Get "proxmox.vm.disk_size"}}"
+vm_storage       = "{{.Get "proxmox.vm.storage"}}
+vm_network_bridge = "{{.Get "proxmox.vm.network_bridge"}}
+vm_network_model = "{{.Get "proxmox.vm.network_model"}}
+proxmox_nodes = {{ .GetKeysAsArray "proxmox.nodes" }}
+ssh_public_key_content   = "/Users/janpreetsingh/.ssh/id_rsa.pub"
+ssh_private_key          = "/Users/janpreetsingh/.ssh/id_rsa"
+ssh_user  = "{{.Get "proxmox.vm.ssh_user"}}"
+cloud_init_user_data_file = "templates/cloud_init_user_data.yaml"
+k8s_master_setup_script  = "scripts/k8s_master_setup.sh"
+k8s_worker_setup_script  = "scripts/k8s_worker_setup.sh"
+haproxy_setup_script     = "scripts/haproxy_setup.sh"
+haproxy_config_file      = "templates/haproxy.cfg"
+s3_bucket                = "{{.Get "aws.s3.bucket"}}"
+s3_key                   = "{{.Get "aws.s3.key"}}"
+```
 
-## How Kado Achieves This
+## Beads
 
-### 1. **Declarative Configuration Files**
+Beads are modular units of configuration in Kado. Each bead defines specific aspects of your infrastructure and can relay configurations to other beads. Kado uses `*.kd` files to define beads and their configurations. Users can have as many `.kd` files and templates as needed, allowing for a highly customizable and scalable setup.
 
-Kado uses `*.kd` files to define infrastructure configurations in a declarative manner. These files contain "beads," which are modular blocks that specify configurations for different aspects of your infrastructure.
+### Ansible Bead
 
-### 2. **Templating System**
+**Purpose**: Defines configurations for running Ansible playbooks.
 
-Kado leverages a powerful templating system to generate configuration files for Terraform and Ansible. Templates can be customized to fit specific needs, ensuring flexibility and adaptability.
+**Example**:
 
-### 3. **Automation of IaC Workflows**
+```hcl
+bead "ansible" {
+  enabled = false
+  source = "git@github.com:janpreet/proxmox_ansible.git"
+  playbook = "cluster.yaml"
+  extra_vars_file = false
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_ansible.git,path=ansible/policies/proxmox.rego,input=ansible/cluster.yaml,package=data.proxmox.main.allowed"
+  #extra_vars = "a=b"
+}
+```
 
-Kado automates the execution of Terraform and Ansible by processing the `*.kd` files and applying the configurations. This automation streamlines workflows and reduces the potential for human error.
+### Terraform Bead
 
-### 4. **Policy Enforcement with OPA**
+**Purpose**: Defines configurations for running Terraform.
 
-By integrating Open Policy Agent, Kado enforces policies and compliance checks on your infrastructure configurations. Beads can relay their configurations to OPA, ensuring that only compliant configurations are applied.
+**Example**:
 
-### 5. **Modular and Extensible Design**
+```hcl
+bead "terraform" {
+  source = "git@github.com:janpreet/proxmox_terraform.git"
+  enabled = true
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_terraform.git,path=terraform/policies/proxmox.rego,input=terraform/plan.json,package=data.terraform.allow"
+}
+```
 
-Kado's bead structure allows for modular and extensible configuration management. Users can define custom beads and templates to fit their unique infrastructure requirements.
+### OPA Bead
 
-### 6. **Bring Your Own Code (BYOC)**
+**Purpose**: Defines configurations for running Open Policy Agent (OPA) validations.
 
-Kado supports BYOC, allowing users to plug in their own parameterized IaC code. This means you can bring your existing Terraform and Ansible configurations and integrate them into Kado.
+**Example**:
 
-### 7. Centralized Variable Management
-Kado uses a central configuration file (e.g., cluster.yaml) to store variable values that are used across different beads and templates. This ensures consistency and simplifies the management of configuration variables.
+```hcl
+bead "opa" {
+  enabled = true
+  path = "path/to/opa/policy.rego"
+  input = "path/to/opa/input.json"
+  package = "data.example.allow"
+}
+```
 
+### Terragrunt Bead
 
-## Key Features
+**Purpose**: Defines configurations for running Terragrunt.
 
-### Modular Configuration
+**Example**:
 
-Kado uses a bead-based configuration system where each bead represents a distinct aspect of your infrastructure. This modular approach allows you to define specific configurations for different tools and components, making it easy to manage and update your infrastructure as needed.
+```hcl
+bead "terragrunt" {
+  source = "git@github.com:janpreet/proxmox_terragrunt.git"
+  enabled = true
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_terragrunt.git,path=terragrunt/policies/proxmox.rego,input=terragrunt/plan.json,package=data.terraform.allow"
+}
+```
 
-### Single Source of Truth
+## Usage
 
-Kado leverages a single source of truth for configuration variables, ensuring consistency across different environments. By defining variables in a centralized configuration file (e.g., `cluster.yaml`), Kado ensures that all infrastructure components use the same set of parameters, reducing the risk of configuration drift.
+### Commands
 
-### Integration with Popular Tools
+- `kado [file.yaml]`: Runs the default configuration and processing of beads. You may pass a specific YAML file to Kado. If no file is specified, Kado scans all YAML files in the current directory.
+- `kado set`: Applies the configuration and processes beads with the `set` flag.
+- `kado fmt [dir]`: Formats `.kd` files in the specified directory.
+- `kado ai`: Runs AI-based recommendations if enabled in the `~/.kdconfig` configuration.
+- `kado config`: Displays the current configuration and order of execution.
 
-Kado seamlessly integrates with popular infrastructure management tools like Terraform, Ansible, and OPA. This integration allows you to harness the power of these tools while benefiting from Kado's unified configuration and management framework.
+### Getting Started
 
-### Automation and Relay Mechanism
+1. **Download the latest release** from GitHub.
+2. **Create your configuration files** (`cluster.yaml` and `.kd` files).
+3. **Define your templates** in the `templates/` directory.
+4. **Run Kado** using one of the commands listed above.
 
-Kado automates the deployment and management of infrastructure by processing beads in a defined order. Beads can relay their configurations to other beads, enabling a flexible and dynamic workflow. This relay mechanism ensures that configurations are applied logically and consistently across different components.
+### Configuration
 
-### Policy Enforcement with OPA
+Create a `.kdconfig` file in your home directory to enable AI recommendations:
 
-Kado supports policy enforcement using OPA. If OPA is enabled and configured, Kado ensures that infrastructure changes comply with defined policies before applying them. This feature helps maintain security and compliance standards across your infrastructure.
+```plaintext
+AI_API_KEY=<your_api_key>
+AI_MODEL=gpt-3.5-turbo
+AI_CLIENT=chatgpt
+AI_ENABLED=true
+```
 
-## Getting Started
+### Outputs
 
-### Easy Configuration
-
-Kado uses `*.kd` files to define beads and their configurations. Users can have as many `.kd` files and templates as needed, allowing for a highly customizable and scalable setup.
-
-### Flexible Templates
-
-Kado supports custom templates for generating configuration files for various tools. These templates can be tailored to meet the specific needs of your infrastructure, providing flexibility and control over the configuration process.
-
-### Simplified Deployment
-
-Kado simplifies the deployment process by automating the execution of configured beads. Whether you are using Terraform for provisioning resources, Ansible for configuration management, or OPA for policy enforcement, Kado ensures that everything works together seamlessly.
-
-### Example Workflow
-
-1. **Define Beads**: Create `*.kd` files to define your infrastructure components using beads.
-2. **Configure Templates**: Customize templates to generate the necessary configuration files for your tools.
-3. **Run Kado**: Use Kado commands to process and apply your configurations, ensuring that your infrastructure is deployed and managed consistently.
+- **Processed Beads**: Lists the beads that have been successfully processed.
+- **Skipped Beads**: Lists the beads that were skipped and the reasons for skipping.
 
 ## Conclusion
 
 Kado aims to simplify and streamline the management of your infrastructure as code. By providing a modular, consistent, and automated framework, Kado helps you reduce complexity, minimize errors, and achieve efficient infrastructure management. Whether you are provisioning resources with Terraform, managing configurations with Ansible, or enforcing policies with OPA, Kado brings everything together into a cohesive and powerful tool.
 
+## Upcoming Improvements
+
+- More tests and better test coverage.
+- Support for CDK and Pulumi.
+- Improved error handling and logging.
+- More customizable and dynamic templating functions.
+
 Dive into the Kado project and experience a new level of simplicity and efficiency in managing your infrastructure!
-[Configuration](https://github.com/janpreet/kado/blob/main/assets/Configuration.md), [How to](https://github.com/janpreet/kado/blob/main/assets/How-to.md), [Structure](https://github.com/janpreet/kado/blob/main/assets/Structure.md)
+[Configuration](https://github.com/janpreet/kado/blob/main/assets/Configuration.md), [How to](https://github.com/janpreet/kado/blob/main/assets/How-to.md), [Structure](https://github.com/janpreet/kado/blob/main/assets/Structure.md), [TLDR](https://github.com/janpreet/kado/blob/main/assets/TLDR.md)
