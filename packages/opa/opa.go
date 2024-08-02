@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
+	"strings"
 	"github.com/janpreet/kado/packages/bead"
 	"github.com/janpreet/kado/packages/engine"
 	"github.com/janpreet/kado/packages/terraform"
@@ -15,21 +15,28 @@ import (
 )
 
 func HandleOPA(b bead.Bead, landingZone string, applyPlan bool, originBead string) error {
-	fmt.Printf("Processing OPA bead:\n")
-	for key, val := range b.Fields {
-		fmt.Printf("  %s = %s\n", key, val)
-	}
+    fmt.Printf("Processing OPA bead (Origin: %s):\n", originBead)
+    for key, val := range b.Fields {
+        fmt.Printf("  %s = %s\n", key, val)
+    }
 
-	inputPath, ok := b.Fields["input"]
-	if !ok {
-		return fmt.Errorf("input path not specified in bead")
-	}
-	fullInputPath := filepath.Join(landingZone, inputPath)
-	fmt.Printf("Reading input file from path: %s\n", fullInputPath)
-	inputData, err := os.ReadFile(fullInputPath)
-	if err != nil {
-		return fmt.Errorf("failed to read input file: %v", err)
-	}
+    inputPath, ok := b.Fields["input"]
+    if !ok {
+        return fmt.Errorf("input path not specified in bead")
+    }
+    
+    fullInputPath := filepath.Join(landingZone, inputPath)
+    if originBead != "" {
+        
+        inputPath = strings.TrimPrefix(inputPath, originBead+"/")
+        fullInputPath = filepath.Join(landingZone, originBead, inputPath)
+    }
+    
+    fmt.Printf("Reading input file from path: %s\n", fullInputPath)
+    inputData, err := os.ReadFile(fullInputPath)
+    if err != nil {
+        return fmt.Errorf("failed to read input file: %v", err)
+    }
 
 	var input interface{}
 	if filepath.Ext(fullInputPath) == ".yaml" || filepath.Ext(fullInputPath) == ".yml" {
@@ -42,16 +49,23 @@ func HandleOPA(b bead.Bead, landingZone string, applyPlan bool, originBead strin
 		}
 	}
 
-	policyPath, ok := b.Fields["path"]
-	if !ok {
-		return fmt.Errorf("policy path not specified in bead")
-	}
-	fullPolicyPath := filepath.Join(landingZone, policyPath)
-	fmt.Printf("Reading policy file from path: %s\n", fullPolicyPath)
-	policyData, err := os.ReadFile(fullPolicyPath)
-	if err != nil {
-		return fmt.Errorf("failed to read policy file: %v", err)
-	}
+    policyPath, ok := b.Fields["path"]
+    if !ok {
+        return fmt.Errorf("policy path not specified in bead")
+    }
+    
+    fullPolicyPath := filepath.Join(landingZone, policyPath)
+    if originBead != "" {
+        
+        policyPath = strings.TrimPrefix(policyPath, originBead+"/")
+        fullPolicyPath = filepath.Join(landingZone, originBead, policyPath)
+    }
+    
+    fmt.Printf("Reading policy file from path: %s\n", fullPolicyPath)
+    policyData, err := os.ReadFile(fullPolicyPath)
+    if err != nil {
+        return fmt.Errorf("failed to read policy file: %v", err)
+    }
 
 	packageQuery := "data.terraform.allow"
 	if pkg, ok := b.Fields["package"]; ok {

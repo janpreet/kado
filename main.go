@@ -12,10 +12,7 @@ import (
 	"github.com/janpreet/kado/packages/display"
 	"github.com/janpreet/kado/packages/engine"
 	"github.com/janpreet/kado/packages/helper"
-	"github.com/janpreet/kado/packages/opa"
 	"github.com/janpreet/kado/packages/render"
-	"github.com/janpreet/kado/packages/terraform"
-	"github.com/janpreet/kado/packages/terragrunt"
 )
 
 func convertYAMLToSlice(yamlData map[string]interface{}) []map[string]interface{} {
@@ -38,141 +35,92 @@ func applyRelayOverrides(b *bead.Bead) map[string]string {
 }
 
 func processBead(b bead.Bead, yamlData map[string]interface{}, beadMap map[string]bead.Bead, processed map[string]int, processedBeads *[]string, applyPlan bool, originBead string, relayToOPA bool) error {
-	if count, ok := processed[b.Name]; ok && count > 0 && originBead == "" {
+	config.DebugPrint("DEBUG: processBead called for %s (Enabled: %v, Origin: %s)\n", b.Name, *b.Enabled, originBead)
+    
+    if b.Enabled != nil && !*b.Enabled {
+		config.DebugPrint("DEBUG: Skipping disabled bead: %s\n", b.Name)       
 		return nil
-	}
+    }
 
-	fmt.Printf("Processing bead: %s\n", b.Name)
+    if count, ok := processed[b.Name]; ok && count > 0 && originBead == "" {
+		config.DebugPrint("DEBUG: Skipping already processed bead: %s\n", b.Name)
+        return nil
+    }
 
-	if originBead != "" {
-		repoPath := filepath.Join(config.LandingZone, b.Name)
-		if helper.FileExists(repoPath) {
-			fmt.Printf("Removing existing repository at: %s\n", repoPath)
-			err := os.RemoveAll(repoPath)
-			if err != nil {
-				return fmt.Errorf("failed to remove existing repository for bead %s: %v", b.Name, err)
-			}
-		}
-	}
+	config.DebugPrint("DEBUG: Actually processing bead: %s\n", b.Name)
 
-	if source, ok := b.Fields["source"]; ok && source != "" {
-		refs := ""
-		if refsVal, ok := b.Fields["refs"]; ok {
-			refs = refsVal
-		}
-		err := helper.CloneRepo(source, config.LandingZone, b.Name, refs)
-		if err != nil {
-			return fmt.Errorf("failed to clone repo for bead %s: %v", b.Name, err)
-		}
-	}
+    if originBead != "" {
+        repoPath := filepath.Join(config.LandingZone, b.Name)
+        if helper.FileExists(repoPath) {
+            fmt.Printf("Removing existing repository at: %s\n", repoPath)
+            err := os.RemoveAll(repoPath)
+            if err != nil {
+                return fmt.Errorf("failed to remove existing repository for bead %s: %v", b.Name, err)
+            }
+        }
+    }
 
-	display.DisplayBead(b)
+    if source, ok := b.Fields["source"]; ok && source != "" {
+        refs := ""
+        if refsVal, ok := b.Fields["refs"]; ok {
+            refs = refsVal
+        }
+        err := helper.CloneRepo(source, config.LandingZone, b.Name, refs)
+        if err != nil {
+            return fmt.Errorf("failed to clone repo for bead %s: %v", b.Name, err)
+        }
+    }
 
-	if b.Name == "ansible" {
-		fmt.Println("Processing Ansible templates...")
+    display.DisplayBead(b)
 
-		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no templates defined for Ansible in the YAML configuration")
-		}
+    switch b.Name {
+    case "ansible":
+        err := helper.ProcessAnsibleBead(b, yamlData, relayToOPA, applyPlan)
+        if err != nil {
+            return err
+        }
+    case "terraform":
+        err := helper.ProcessTerraformBead(b, yamlData, applyPlan)
+        if err != nil {
+            return err
+        }
+    case "opa":
+        err := helper.ProcessOPABead(b, applyPlan, originBead)
+        if err != nil {
+            return err
+        }
+    case "terragrunt":
+        err := helper.ProcessTerragruntBead(b, yamlData, applyPlan)
+        if err != nil {
+            return err
+        }
+    default:
+        return fmt.Errorf("unknown bead type: %s", b.Name)
+    }
 
-		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
-		if err != nil {
-			return fmt.Errorf("failed to process Ansible templates: %v", err)
-		}
+    processed[b.Name]++
+    *processedBeads = append(*processedBeads, b.Name)
+    config.DebugPrint("DEBUG: Added %s to processedBeads\n", b.Name)
 
-		if relayToOPA {
-			fmt.Println("Ansible bead is relayed to OPA for evaluation.")
-		}
+    if relay, ok := b.Fields["relay"]; ok {
+		config.DebugPrint("DEBUG: Relay found for %s to %s\n", b.Name, relay)
+        if relayBead, ok := beadMap[relay]; ok {
+            if relayBead.Enabled != nil && !*relayBead.Enabled {
+                config.DebugPrint("DEBUG: Skipping disabled relay bead: %s\n", relayBead.Name)
+                return nil
+            }
+            overrides := applyRelayOverrides(&b)
+            for key, value := range overrides {
+                relayBead.Fields[key] = value
+            }
+            config.DebugPrint("DEBUG: Calling processBead for relay %s\n", relayBead.Name)
+            return processBead(relayBead, yamlData, beadMap, processed, processedBeads, applyPlan, b.Name, b.Name == "opa")
+        } else {
+            config.DebugPrint("DEBUG: Relay bead %s not found in beadMap\n", relay)
+        }
+    }
 
-		if playbook, ok := b.Fields["playbook"]; ok && playbook != "" {
-			playbookPath := filepath.Join(config.LandingZone, b.Name, playbook)
-			inventoryPath := b.Fields["inventory"]
-			if inventoryPath == "" {
-				inventoryPath = filepath.Join(config.LandingZone, "inventory.ini")
-			}
-			extraVarsFile := false
-			if extraVarsFileFlag, ok := b.Fields["extra_vars_file"]; ok && extraVarsFileFlag == "true" {
-				extraVarsFile = true
-			}
-			fmt.Printf("Running Ansible playbook: %s with inventory: %s\n", playbookPath, inventoryPath)
-			if !helper.FileExists(playbookPath) {
-				return fmt.Errorf("playbook file does not exist: %s", playbookPath)
-			}
-			if !relayToOPA || (relayToOPA && applyPlan) {
-				err := engine.HandleAnsible(b, convertYAMLToSlice(yamlData), extraVarsFile)
-				if err != nil {
-					return fmt.Errorf("failed to run Ansible: %v", err)
-				}
-			} else {
-				fmt.Println("Skipping Ansible playbook apply due to OPA evaluation or missing 'set' flag.")
-			}
-		}
-	}
-
-	if b.Name == "terraform" {
-		fmt.Println("Processing Terraform templates...")
-
-		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no templates defined for Terraform in the YAML configuration")
-		}
-
-		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
-		if err != nil {
-			return fmt.Errorf("failed to process Terraform templates: %v", err)
-		}
-
-		fmt.Println("Running Terraform plan...")
-		err = terraform.HandleTerraform(b, config.LandingZone, applyPlan)
-		if err != nil {
-			return fmt.Errorf("failed to run Terraform: %v", err)
-		}
-	}
-
-	if b.Name == "opa" {
-		fmt.Println("Processing OPA validation...")
-		err := opa.HandleOPA(b, config.LandingZone, applyPlan, originBead)
-		if err != nil {
-			return fmt.Errorf("failed to process OPA: %v", err)
-		}
-	}
-
-	if b.Name == "terragrun" {
-		fmt.Println("Processing Terragrunt templates...")
-
-		templatePaths, ok := yamlData["kado"].(map[string]interface{})["templates"].([]interface{})
-		if !ok {
-			return fmt.Errorf("no templates defined for Terragrunt in the YAML configuration")
-		}
-
-		err := render.ProcessTemplates(convertTemplatePaths(templatePaths), yamlData)
-		if err != nil {
-			return fmt.Errorf("failed to process Terragrunt templates: %v", err)
-		}
-
-		fmt.Println("Running Terragrunt plan...")
-		err = terragrunt.HandleTerragrunt(b, config.LandingZone, applyPlan)
-		if err != nil {
-			return fmt.Errorf("failed to run Terragrunt: %v", err)
-		}
-	}
-
-	*processedBeads = append(*processedBeads, b.Name)
-	processed[b.Name]++
-
-	if relay, ok := b.Fields["relay"]; ok {
-		if relayBead, ok := beadMap[relay]; ok {
-
-			overrides := applyRelayOverrides(&b)
-			for key, value := range overrides {
-				relayBead.Fields[key] = value
-			}
-			return processBead(relayBead, yamlData, beadMap, processed, processedBeads, applyPlan, b.Name, b.Name == "opa")
-		}
-	}
-
-	return nil
+    return nil
 }
 
 func convertTemplatePaths(paths []interface{}) []string {
@@ -243,13 +191,45 @@ func main() {
 		log.Fatalf("Failed to get KD files: %v", err)
 	}
 
-	var beads []bead.Bead
-	for _, kdFile := range kdFiles {
+	beadMap := make(map[string]bead.Bead)
+	var primaryKdFile string
+	
+	for i, kdFile := range kdFiles {
+		config.DebugPrint("DEBUG: Loading file: %s\n", kdFile)
 		bs, err := config.LoadBeadsConfig(kdFile)
 		if err != nil {
 			log.Fatalf("Failed to load beads config from %s: %v", kdFile, err)
 		}
-		beads = append(beads, bs...)
+		
+		if i == 0 {
+			primaryKdFile = kdFile
+		}
+		
+		for _, b := range bs {
+			if _, ok := beadMap[b.Name]; ok {
+				if kdFile != primaryKdFile {
+					fmt.Printf("WARNING: Ignoring conflicting configuration for bead %s in file %s. Using configuration from %s\n", b.Name, kdFile, primaryKdFile)
+				} else {
+					beadMap[b.Name] = b
+					config.DebugPrint("DEBUG: Updated bead %s (Enabled: %v) from primary file %s\n", b.Name, *b.Enabled, kdFile)
+				}
+			} else {
+				beadMap[b.Name] = b
+				config.DebugPrint("DEBUG: Loaded new bead %s (Enabled: %v) from file %s\n", b.Name, *b.Enabled, kdFile)
+			}
+		}
+	}
+	
+	var allBeads []bead.Bead
+	for _, b := range beadMap {
+		allBeads = append(allBeads, b)
+	}
+	
+	validBeads, invalidBeadReasons := config.GetValidBeadsWithDefaultEnabled(allBeads)
+	
+	config.DebugPrint("DEBUG: Final bead configurations:")
+	for _, b := range validBeads {
+		fmt.Printf("  - %s (Enabled: %v)\n", b.Name, *b.Enabled)
 	}
 
 	yamlData, err := config.LoadYAMLConfig(yamlFilePath)
@@ -265,38 +245,43 @@ func main() {
 	var invalidBeadNames []string
 	var processedBeads []string
 
-	validBeads, invalidBeadReasons := config.GetValidBeadsWithDefaultEnabled(beads)
-
-	beadMap := make(map[string]bead.Bead)
+	config.DebugPrint("DEBUG: Final bead configurations:")
 	for _, b := range validBeads {
-		beadMap[b.Name] = b
+		fmt.Printf("  - %s (Enabled: %v)\n", b.Name, *b.Enabled)
 	}
 
-	processed := make(map[string]int)
-
+	config.DebugPrint("DEBUG: Valid beads:")
 	for _, b := range validBeads {
+		fmt.Printf("  - %s (Enabled: %v)\n", b.Name, *b.Enabled)
+	}
+	
+	processed := make(map[string]int)
+	
+	for _, b := range validBeads {
+		config.DebugPrint("DEBUG: Main loop processing bead %s (Enabled: %v)\n", b.Name, *b.Enabled)
+		if b.Enabled != nil && !*b.Enabled {
+			config.DebugPrint("DEBUG: Skipping disabled bead in main loop: %s\n", b.Name)
+			continue
+		}
 		if err := processBead(b, yamlData, beadMap, processed, &processedBeads, applyPlan, "", false); err != nil {
 			log.Fatalf("Failed to process bead %s: %v", b.Name, err)
 		}
 	}
 
 	for beadIndex, reason := range invalidBeadReasons {
-		beadName := fmt.Sprintf("bead_%d", beadIndex)
+		beadName := fmt.Sprintf("bead_%s", beadIndex)
 		fmt.Printf("Skipping bead: %s, Reason: %s\n", beadName, reason)
 		invalidBeadNames = append(invalidBeadNames, fmt.Sprintf("%s: %s", beadName, reason))
+	}	
+
+	fmt.Println("\nDEBUG: Processed beads:")
+	for _, name := range processedBeads {
+		fmt.Printf("  - %s\n", name)
+	}
+	
+	fmt.Println("\nDEBUG: Skipped beads:")
+	for name, reason := range invalidBeadReasons {
+		fmt.Printf("  - %s: %s\n", name, reason)
 	}
 
-	if len(processedBeads) > 0 {
-		fmt.Println("\nProcessed beads:")
-		for _, name := range processedBeads {
-			fmt.Printf("  - %s\n", name)
-		}
-	}
-
-	if len(invalidBeadNames) > 0 {
-		fmt.Println("\nSkipped beads:")
-		for _, name := range invalidBeadNames {
-			fmt.Printf("  - %s\n", name)
-		}
-	}
 }

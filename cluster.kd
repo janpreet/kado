@@ -11,7 +11,7 @@ bead "ansible" {
 
 bead "terraform" {
   source = "git@github.com:janpreet/proxmox_terraform.git"
-  enabled = false
+  enabled = true
   relay = opa
   relay_field = "source=git@github.com:janpreet/proxmox_terraform.git,path=terraform/policies/proxmox.rego,input=terraform/plan.json,package=data.terraform.allow"
 }
