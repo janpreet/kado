@@ -3,7 +3,7 @@
 
 ## Introduction
 
-Kado is a modular configuration management tool designed to streamline and automate the provisioning and configuration of infrastructure using tools like Ansible, Terraform, and Terragrunt. It provides a flexible framework for defining and processing configurations through a concept called "beads," which are modular units of configuration.
+Kado is a modular configuration management tool designed to streamline and automate the provisioning and configuration of infrastructure using tools like Ansible, Terraform, and Terragrunt. It provides a flexible framework for defining and processing configurations through a concept called "beads," which are modular units of configuration. At the end of the day it's an orchestrator for your IaC, a playbook for your Ansible playbooks, and a wrapper around Terraform- which works according to your instrcutions.
 
 ## Table of Contents
 
