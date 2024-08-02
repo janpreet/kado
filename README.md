@@ -192,6 +192,7 @@ bead "terragrunt" {
 - `kado fmt [dir]`: Formats `.kd` files in the specified directory.
 - `kado ai`: Runs AI-based recommendations if enabled in the `~/.kdconfig` configuration.
 - `kado config`: Displays the current configuration and order of execution.
+- `kado -debug`: Runs Kado with debug output enabled, providing detailed information about the execution process.
 
 ### Getting Started
 
