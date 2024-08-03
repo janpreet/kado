@@ -1,10 +1,10 @@
 name: Build, Docker, and Release
-on:
+'on':
   push:
     branches:
       - main
-      - 'feature/*'
-      - 'fix/*'
+      - feature/*
+      - fix/*
 env:
   VERSION_FILE: VERSION
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}
@@ -14,8 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
+        goos:
+          - linux
+          - windows
+          - darwin
+        goarch:
+          - amd64
+          - arm64
         exclude:
           - goos: windows
             goarch: arm64
@@ -26,12 +31,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.22.x'
+          go-version: 1.22.x
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: 3.x
 
       - name: Log in to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -78,7 +83,9 @@ jobs:
           #docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
 
   release:
-    needs: [build, docker]
+    needs:
+      - build
+      - docker
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
