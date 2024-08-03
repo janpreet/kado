@@ -1,12 +1,10 @@
 name: Build, Docker, and Release
-
-on:
+'on':
   push:
     branches:
       - main
-      - 'feature/*'
-      - 'fix/*'
-
+      - feature/*
+      - fix/*
 env:
   VERSION_FILE: VERSION
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}
@@ -14,48 +12,101 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        goos:
+          - linux
+          - windows
+          - darwin
+        goarch:
+          - amd64
+          - arm64
+        exclude:
+          - goos: windows
+            goarch: arm64
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: '1.22.x'
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.22.x
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
 
-    - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-    - name: Bump version
-      run: make version-bump
+      - name: Bump version
+        run: make version-bump
 
-    - name: Read version
-      id: version
-      run: echo "::set-output name=version::$(cat $(VERSION_FILE))"
+      - name: Read version
+        id: version
+        run: echo "::set-output name=version::$(cat $(VERSION_FILE))"
 
-    - name: Run tests
-      run: |
-        go test ./...
+      - name: Run tests
+        run: go test ./...
 
-    - name: Build Docker image
-      run: make docker-build
+      - name: Build for ${{ matrix.goos }}-${{ matrix.goarch }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -o kado-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            mv kado-${{ matrix.goos }}-${{ matrix.goarch }} kado-${{ matrix.goos }}-${{ matrix.goarch }}.exe
+          fi
 
-    - name: Push Docker image to GitHub Packages
-      run: |
-        docker push ${{ env.DOCKER_IMAGE }}:latest
-        #docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: kado-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: kado-${{ matrix.goos }}-${{ matrix.goarch }}*
 
-    - name: Create GitHub release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ steps.version.outputs.version }}
-        name: Release ${{ steps.version.outputs.version }}
-        files: kado
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build Docker image
+        run: make docker-build
+
+      - name: Push Docker image to GitHub Packages
+        run: |
+          docker push ${{ env.DOCKER_IMAGE }}:latest
+          #docker push ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
+
+  release:
+    needs:
+      - build
+      - docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: |
+            kado-linux-amd64
+            kado-linux-arm64
+            kado-windows-amd64.exe
+            kado-darwin-amd64
+            kado-darwin-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
