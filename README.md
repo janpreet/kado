@@ -16,6 +16,7 @@ Kado is a modular configuration management tool designed to streamline and autom
   - [Terraform Bead](#terraform-bead)
   - [OPA Bead](#opa-bead)
   - [Terragrunt Bead](#terragrunt-bead)
+- [Keybase Integration](#keybase-integration)
 - [Usage](#usage)
   - [Commands](#commands)
   - [Getting Started](#getting-started)
@@ -182,6 +183,52 @@ bead "terragrunt" {
   relay_field = "source=git@github.com:janpreet/proxmox_terragrunt.git,path=terragrunt/policies/proxmox.rego,input=terragrunt/plan.json,package=data.terraform.allow"
 }
 ```
+
+## Keybase Integration
+
+Kado integrates with Keybase to provide secure note storage and referencing within your infrastructure configurations. This feature allows you to store sensitive information securely and reference it in your bead definitions.
+
+### Keybase Commands
+
+- `kado keybase link`: Links your Keybase account with Kado.
+- `kado keybase note create <note_name>`: Creates a new encrypted note in Keybase.
+- `kado keybase note list`: Lists all stored notes.
+- `kado keybase note view <note_name>`: Displays the content of a specific note.
+- `kado keybase note share <note_name> <keybase_username>`: Shares a note with another Keybase user.
+- `kado keybase note create-with-tags <note_name> <tag1,tag2,...>`: Creates a new note with tags.
+- `kado keybase note search-by-tag <tag>`: Searches for notes with a specific tag.
+
+### Note Referencing in Bead Definitions
+
+You can reference Keybase notes in your bead definitions using the following syntax:
+
+```hcl
+bead "terraform" {
+  source = "git@github.com:janpreet/proxmox_terraform.git"
+  enabled = true
+  relay = opa
+  relay_field = "source=git@github.com:janpreet/proxmox_terraform.git,path=terraform/policies/proxmox.rego,input=terraform/plan.json,package=data.terraform.allow"
+  api_key = "{{keybase:note:proxmox_api_key}}"
+  secret_token = "{{keybase:note:secret_token}}"
+}
+```
+
+In above example, `{{keybase:note:proxmox_api_key}}` and `{{keybase:note:secret_token}}` will be replaced with the content of the corresponding Keybase notes during Kado execution.
+
+### Benefits of Keybase Integration
+
+- **Enhanced Security**: Store sensitive information like API keys and tokens securely in Keybase.
+- **Version Control**: Keybase notes are version-controlled, allowing you to track changes to sensitive information.
+- **Easy Sharing**: Securely share notes with team members using Keybase's encryption.
+- **Tagging System**: Organize your notes with tags for easy searching and categorization.
+
+### Getting Started with Keybase Integration
+
+1. Ensure you have Keybase installed and configured on your system.
+2. Run `kado keybase link` to link your Keybase account with Kado.
+3. Create notes for sensitive information: `kado keybase note create <note_name>`
+4. Use note references in your bead definitions as shown in the example above.
+
 
 ## Usage
 

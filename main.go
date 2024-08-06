@@ -135,51 +135,42 @@ func convertTemplatePaths(paths []interface{}) []string {
 
 func main() {
 	var yamlFilePath string
-	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".yaml") {
-		yamlFilePath = os.Args[1]
+
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Println("Version:", config.Version)
+			return
+
+		case "config":
+			handleConfigCommand()
+			return
+
+		case "fmt":
+			handleFormatCommand()
+			return
+
+		case "ai":
+			engine.RunAI()
+			return
+
+		case "keybase":
+			if len(os.Args) < 3 {
+				fmt.Println("Usage: kado keybase [debug] <command>")
+				return
+			}
+			helper.HandleKeybaseCommand(os.Args[2:])
+			return
+
+		default:
+			if strings.HasSuffix(os.Args[1], ".yaml") {
+				yamlFilePath = os.Args[1]
+			} else {
+				yamlFilePath = "cluster.yaml"
+			}
+		}
 	} else {
 		yamlFilePath = "cluster.yaml"
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Println("Version:", config.Version)
-		return
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "config" {
-		kdFiles, err := render.GetKDFiles(".")
-		if err != nil {
-			log.Fatalf("Failed to get KD files: %v", err)
-		}
-
-		var beads []bead.Bead
-		for _, kdFile := range kdFiles {
-			bs, err := config.LoadBeadsConfig(kdFile)
-			if err != nil {
-				log.Fatalf("Failed to load beads config from %s: %v", kdFile, err)
-			}
-			beads = append(beads, bs...)
-		}
-
-		display.DisplayBeadConfig(beads)
-		return
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "fmt" {
-		dir := "."
-		if len(os.Args) > 2 {
-			dir = os.Args[2]
-		}
-		err := engine.FormatKDFilesInDir(dir)
-		if err != nil {
-			log.Fatalf("Error formatting .kd files: %v", err)
-		}
-		return
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "ai" {
-		engine.RunAI()
-		return
 	}
 
 	fmt.Println("Starting processing-")
@@ -284,4 +275,33 @@ func main() {
 		fmt.Printf("  - %s: %s\n", name, reason)
 	}
 
+}
+
+func handleConfigCommand() {
+	kdFiles, err := render.GetKDFiles(".")
+	if err != nil {
+		log.Fatalf("Failed to get KD files: %v", err)
+	}
+
+	var beads []bead.Bead
+	for _, kdFile := range kdFiles {
+		bs, err := config.LoadBeadsConfig(kdFile)
+		if err != nil {
+			log.Fatalf("Failed to load beads config from %s: %v", kdFile, err)
+		}
+		beads = append(beads, bs...)
+	}
+
+	display.DisplayBeadConfig(beads)
+}
+
+func handleFormatCommand() {
+	dir := "."
+	if len(os.Args) > 2 {
+		dir = os.Args[2]
+	}
+	err := engine.FormatKDFilesInDir(dir)
+	if err != nil {
+		log.Fatalf("Error formatting .kd files: %v", err)
+	}
 }

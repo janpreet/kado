@@ -1,5 +1,3 @@
-// File: packages/helper/processor.go
-
 package helper
 
 import (
@@ -100,7 +98,7 @@ func ProcessTerragruntBead(b bead.Bead, yamlData map[string]interface{}, applyPl
 	return nil
 }
 
-// Helper functions
+
 
 func convertTemplatePaths(paths []interface{}) []string {
 	var result []string
