@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     bash \
     curl \
     gnupg \
+    unzip \
     python3-pip \
     awscli \
     && pip3 install --no-cache-dir --upgrade pip
