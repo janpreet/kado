@@ -3,12 +3,31 @@ package keybase
 import (
 	"fmt"
 	"os"
+	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 var Debug bool
+type ErrorType int
+
+const (
+    ErrNoteNotFound ErrorType = iota
+    ErrKeybaseNotInitialized
+    ErrPermissionDenied
+    ErrUnknown
+)
+
+type KeybaseError struct {
+    Type    ErrorType
+    Message string
+}
+
+func (e *KeybaseError) Error() string {
+    return e.Message
+}
+
 
 type Note struct {
     Content string
@@ -70,6 +89,7 @@ func LinkKeybase() error {
     return nil
 }
 
+
 func InitNoteRepository() error {
     homeDir, err := os.UserHomeDir()
     if err != nil {
@@ -92,10 +112,10 @@ func CheckKeybaseSetup() error {
 		fmt.Printf("Keybase status output:\n%s\n", string(output))
 	}
 	if err != nil {
-		return fmt.Errorf("Keybase is not properly set up: %v", err)
+		return fmt.Errorf("keybase is not properly set up: %v", err)
 	}
 	if !strings.Contains(string(output), "Logged in:     yes") {
-		return fmt.Errorf("You are not logged in to Keybase. Please run 'kado keybase link' first")
+		return fmt.Errorf("you are not logged in to Keybase. Please run 'kado keybase link' first")
 	}
 	return nil
 }
@@ -109,21 +129,22 @@ func CreateNote(noteName, content string) error {
 		return fmt.Errorf("failed to get home directory: %v", err)
 	}
 	notePath := filepath.Join(homeDir, "Keybase", "private", os.Getenv("USER"), "kado_notes", noteName)
-	dir := filepath.Dir(notePath)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return fmt.Errorf("failed to create directory: %v", err)
-	}
+    notesDir := filepath.Dir(notePath)
+    if err := os.MkdirAll(notesDir, 0700); err != nil {
+        return fmt.Errorf("failed to create notes directory: %v", err)
+    }
+
     if err := os.WriteFile(notePath, []byte(content), 0600); err != nil {
         return fmt.Errorf("failed to write note: %v", err)
     }
 
-    
     if err := gitAddCommit(notePath, "Create note "+noteName); err != nil {
-        return fmt.Errorf("failed to version note: %v", err)
+        // Log the error but don't fail the note creation
+        log.Printf("WARNING: Failed to version note: %v", err)
     }
 
     if Debug {
-        fmt.Printf("Note created and versioned at: %s\n", notePath)
+        fmt.Printf("Note created at: %s\n", notePath)
     }
     return nil
 }
@@ -220,19 +241,42 @@ func UpdateNote(noteName, content string) error {
     return nil
 }
 
-func gitAddCommit(filePath, message string) error {
-    dir := filepath.Dir(filePath)
-    
-    addCmd := exec.Command("git", "add", filepath.Base(filePath))
-    addCmd.Dir = dir
-    if err := addCmd.Run(); err != nil {
-        return fmt.Errorf("git add failed: %v", err)
+func ensureGitRepo(notesDir string) error {
+    gitDir := filepath.Join(notesDir, ".git")
+    if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+        cmd := exec.Command("git", "init")
+        cmd.Dir = notesDir
+        if output, err := cmd.CombinedOutput(); err != nil {
+            return fmt.Errorf("failed to initialize git repository: %v\nOutput: %s", err, output)
+        }
+    }
+    return nil
+}
+
+func gitAddCommit(notePath, message string) error {
+    dir := filepath.Dir(notePath)
+
+    // Ensure the repository exists
+    if err := ensureGitRepo(dir); err != nil {
+        return err
     }
 
+    // Git add
+    addCmd := exec.Command("git", "add", filepath.Base(notePath))
+    addCmd.Dir = dir
+    if output, err := addCmd.CombinedOutput(); err != nil {
+        return fmt.Errorf("git add failed: %v\nOutput: %s", err, output)
+    }
+
+    // Git commit
     commitCmd := exec.Command("git", "commit", "-m", message)
     commitCmd.Dir = dir
-    if err := commitCmd.Run(); err != nil {
-        return fmt.Errorf("git commit failed: %v", err)
+    if output, err := commitCmd.CombinedOutput(); err != nil {
+        // Check if the error is due to no changes
+        if strings.Contains(string(output), "nothing to commit") {
+            return nil // This is not an error, just no changes to commit
+        }
+        return fmt.Errorf("git commit failed: %v\nOutput: %s", err, output)
     }
 
     return nil

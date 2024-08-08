@@ -21,6 +21,11 @@ RUN curl -L -o /usr/local/bin/opa https://openpolicyagent.org/downloads/latest/o
 
 RUN pip3 install --no-cache-dir ansible==${ANSIBLE_VERSION}
 
+RUN curl -O https://prerelease.keybase.io/keybase_amd64.tar.gz \
+    && tar xvf keybase_amd64.tar.gz \
+    && mv keybase /usr/local/bin/ \
+    && rm keybase_amd64.tar.gz
+
 COPY kado /usr/local/bin/kado
 
 ENV PATH="/opt/venv/bin:$PATH"

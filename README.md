@@ -91,7 +91,7 @@ Example `vm.tfvars.tmpl`:
 aws_region       = "{{.Get "aws.s3.region"}}"
 pm_api_url       = "{{.Get "proxmox.api_url"}}"
 pm_user          = "{{.Env "PM_USER"}}"
-pm_password      = "{{.Env "PM_PASSWORD"}}"
+pm_password      = "{{ keybase:note:secret_token }}"
 vm_roles = {
   master       = {{.Get "proxmox.vm.roles.master"}}
   worker       = {{.Get "proxmox.vm.roles.worker"}}
@@ -186,7 +186,7 @@ bead "terragrunt" {
 
 ## Keybase Integration
 
-Kado integrates with Keybase to provide secure note storage and referencing within your infrastructure configurations. This feature allows you to store sensitive information securely and reference it in your bead definitions.
+Kado integrates with Keybase to provide secure storage and referencing of sensitive information within your infrastructure configurations.
 
 ### Keybase Commands
 
@@ -198,29 +198,16 @@ Kado integrates with Keybase to provide secure note storage and referencing with
 - `kado keybase note create-with-tags <note_name> <tag1,tag2,...>`: Creates a new note with tags.
 - `kado keybase note search-by-tag <tag>`: Searches for notes with a specific tag.
 
-### Note Referencing in Bead Definitions
-
-You can reference Keybase notes in your bead definitions using the following syntax:
-
-```hcl
-bead "terraform" {
-  source = "git@github.com:janpreet/proxmox_terraform.git"
-  enabled = true
-  relay = opa
-  relay_field = "source=git@github.com:janpreet/proxmox_terraform.git,path=terraform/policies/proxmox.rego,input=terraform/plan.json,package=data.terraform.allow"
-  api_key = "{{keybase:note:proxmox_api_key}}"
-  secret_token = "{{keybase:note:secret_token}}"
-}
-```
-
-In above example, `{{keybase:note:proxmox_api_key}}` and `{{keybase:note:secret_token}}` will be replaced with the content of the corresponding Keybase notes during Kado execution.
-
-### Benefits of Keybase Integration
+### Security Benefits
 
 - **Enhanced Security**: Store sensitive information like API keys and tokens securely in Keybase.
 - **Version Control**: Keybase notes are version-controlled, allowing you to track changes to sensitive information.
 - **Easy Sharing**: Securely share notes with team members using Keybase's encryption.
 - **Tagging System**: Organize your notes with tags for easy searching and categorization.
+
+### Using Keybase Notes in Templates
+
+You can reference Keybase notes in your templates using the `{{keybase:note:note_name}}` syntax. This allows you to keep sensitive information like API keys and tokens secure while still being able to use them in your configurations.
 
 ### Getting Started with Keybase Integration
 
@@ -229,6 +216,7 @@ In above example, `{{keybase:note:proxmox_api_key}}` and `{{keybase:note:secret_
 3. Create notes for sensitive information: `kado keybase note create <note_name>`
 4. Use note references in your bead definitions as shown in the example above.
 
+In above template example, `{{keybase:note:secret_token}}` will be replaced with the content of the corresponding Keybase notes during Kado execution.
 
 ## Usage
 
@@ -237,9 +225,10 @@ In above example, `{{keybase:note:proxmox_api_key}}` and `{{keybase:note:secret_
 - `kado [file.yaml]`: Runs the default configuration and processing of beads. You may pass a specific YAML file to Kado. If no file is specified, Kado scans all YAML files in the current directory.
 - `kado set`: Applies the configuration and processes beads with the `set` flag.
 - `kado fmt [dir]`: Formats `.kd` files in the specified directory.
-- `kado ai`: Runs AI-based recommendations if enabled in the `~/.kdconfig` configuration.
+- `kado ai`: Runs AI-based recommendations if enabled.
 - `kado config`: Displays the current configuration and order of execution.
-- `kado -debug`: Runs Kado with debug output enabled, providing detailed information about the execution process.
+- `kado -debug`: Runs Kado with debug output enabled.
+- `kado keybase <command>`: Manages Keybase integration (link, create/list/view/share notes).
 
 ### Getting Started
 
