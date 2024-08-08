@@ -8,9 +8,16 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     unzip \
-    python3-pip \
+    python3.10 \
+    python3.10-venv \
+    python3.10-dev \
     awscli \
-    && pip3 install --no-cache-dir --upgrade pip
+    && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python3.10 get-pip.py \
+    && rm get-pip.py
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
 RUN curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
     && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
