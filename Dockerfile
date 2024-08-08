@@ -3,14 +3,26 @@ FROM debian:bullseye-slim
 ARG TERRAFORM_VERSION=1.9.3
 ARG ANSIBLE_VERSION=2.6.13
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     curl \
     gnupg \
     unzip \
     python3-pip \
     awscli \
-    && pip3 install --no-cache-dir --upgrade pip
+    libayatana-appindicator3-1 \
+    fuse \
+    psmisc \
+    lsof \
+    procps \
+    libasound2 \
+    libnss3 \
+    libxss1 \
+    libxtst6 \
+    libgtk-3-0 \
+    && pip3 install --no-cache-dir --upgrade pip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
     && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
