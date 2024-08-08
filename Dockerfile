@@ -9,6 +9,8 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     aws-cli \
+    gnupg \
+    libsecret \
     && pip3 install --no-cache-dir --upgrade pip
 
 RUN curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
@@ -21,10 +23,11 @@ RUN curl -L -o /usr/local/bin/opa https://openpolicyagent.org/downloads/latest/o
 
 RUN pip3 install --no-cache-dir ansible==${ANSIBLE_VERSION}
 
-RUN curl -O https://prerelease.keybase.io/keybase_amd64.tar.gz \
-    && tar xvf keybase_amd64.tar.gz \
-    && mv keybase /usr/local/bin/ \
-    && rm keybase_amd64.tar.gz
+RUN curl -s https://keybase.io/docs/server_security/code_signing_key.asc | gpg --import \
+    && curl -O https://prerelease.keybase.io/keybase_amd64.deb \
+    && dpkg -i keybase_amd64.deb \
+    && apt-get install -f \
+    && rm keybase_amd64.deb
 
 COPY kado /usr/local/bin/kado
 
