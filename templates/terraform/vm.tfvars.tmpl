@@ -1,7 +1,7 @@
 <vm.tfvars>
 aws_region       = "{{.Get "aws.s3.region"}}"
 pm_api_url       = "{{.Get "proxmox.api_url"}}"
-pm_user          = "{{.Env "PM_USER"}}"
+pm_user          = "{{ keybase:note:test_note }}"
 pm_password      = "{{.Env "PM_PASSWORD"}}"
 vm_roles = {
   master       = {{.Get "proxmox.vm.roles.master"}}

@@ -7,9 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-
+	"regexp"
 	"github.com/janpreet/kado/packages/config"
+	"github.com/janpreet/kado/packages/keybase"	
 )
+
+var keybaseNoteRegex = regexp.MustCompile(`{{keybase:note:([^}]+)}}`)
 
 func join(data map[string]interface{}, key, delimiter string) string {
 	var result []string
@@ -116,12 +119,20 @@ func ProcessTemplate(templatePath string, data map[string]interface{}) (string, 
 		"GetKeysAsArray": func(key string) string {
 			return FlattenedDataMap{Data: flatData}.GetKeysAsArray(key)
 		},
+        "KeybaseNote": func(noteName string) (string, error) {
+            return resolveKeybaseNote(noteName)
+        },		
 	}
 
-	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(funcMap).Parse(templateContent)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse template: %v", err)
-	}
+	processedContent := keybaseNoteRegex.ReplaceAllStringFunc(templateContent, func(match string) string {
+        noteName := strings.TrimPrefix(strings.TrimSuffix(match, "}}"), "{{keybase:note:")
+        return fmt.Sprintf(`{{ KeybaseNote "%s" }}`, noteName)
+    })	
+
+    tmpl, err := template.New(filepath.Base(templatePath)).Funcs(funcMap).Parse(processedContent)
+    if err != nil {
+        return "", fmt.Errorf("failed to parse template: %v", err)
+    }
 
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, FlattenedDataMap{Data: flatData}); err != nil {
@@ -144,4 +155,12 @@ func ProcessTemplates(templatePaths []string, data map[string]interface{}) error
 		}
 	}
 	return nil
+}
+
+func resolveKeybaseNote(noteName string) (string, error) {
+    content, err := keybase.ViewNote(noteName)
+    if err != nil {
+        return "", fmt.Errorf("failed to resolve Keybase note %s: %v", noteName, err)
+    }
+    return strings.TrimSpace(content), nil
 }
